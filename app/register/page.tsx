@@ -1,128 +1,147 @@
 import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Building, ShoppingBag, Users, Briefcase } from "lucide-react"
+import { Building2, Store, Wrench, Users, Phone } from "lucide-react"
 
 export default function RegisterPage() {
   return (
-    <div className="container max-w-4xl py-10">
-      <Link href="/" className="flex items-center text-sm mb-6 hover:underline">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Home
-      </Link>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Join BlookMySpace</h1>
+          <p className="text-xl text-gray-600">Choose your role and start your journey with us</p>
+        </div>
 
-      <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Join BlookMySpace</h1>
-        <p className="mt-2 text-muted-foreground">Select your role to get started with registration</p>
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Space Owner Registration */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <Building2 className="h-8 w-8 text-blue-600" />
+                <div>
+                  <CardTitle>Space Owner</CardTitle>
+                  <CardDescription>Monetize your space with advertising campaigns</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 mb-6">
+                <li>• Earn 85% of campaign revenue</li>
+                <li>• Flexible scheduling</li>
+                <li>• Verified brand partners</li>
+                <li>• 24-hour payouts</li>
+              </ul>
+              <Link href="/register/space-owner">
+                <Button className="w-full">Register as Space Owner</Button>
+              </Link>
+            </CardContent>
+          </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <Building className="h-10 w-10 mb-2 text-primary" />
-            <CardTitle>Space Owner</CardTitle>
-            <CardDescription>Register your physical space to monetize through advertising</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-6">
-              Perfect for RWAs, gyms, cafes, restaurants, corporate spaces, clinics, and more. Turn your space into a
-              revenue-generating asset.
-            </p>
-            <ul className="list-disc pl-5 space-y-2 mb-6">
-              <li>List your space for brands to discover</li>
-              <li>Set your own pricing and availability</li>
-              <li>Track campaigns and earnings</li>
-              <li>No upfront investment required</li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Link href="/register/space-owner" className="w-full">
-              <Button className="w-full">Register as Space Owner</Button>
+          {/* Brand Registration */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <Store className="h-8 w-8 text-green-600" />
+                <div>
+                  <CardTitle>Brand</CardTitle>
+                  <CardDescription>Advertise in strategic locations</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 mb-6">
+                <li>• Access to verified spaces</li>
+                <li>• Precise audience targeting</li>
+                <li>• Real-time analytics</li>
+                <li>• Flexible campaign duration</li>
+              </ul>
+              <Link href="/register/brand">
+                <Button className="w-full">Register as Brand</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Vendor Registration */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <Wrench className="h-8 w-8 text-orange-600" />
+                <div>
+                  <CardTitle>Vendor</CardTitle>
+                  <CardDescription>Provide services for advertising campaigns</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 mb-6">
+                <li>• Steady stream of clients</li>
+                <li>• Guaranteed payments</li>
+                <li>• Skill development opportunities</li>
+                <li>• Pan-India projects</li>
+              </ul>
+              <Link href="/register/vendor">
+                <Button className="w-full">Register as Vendor</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* BlookForce Agent Registration */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <Users className="h-8 w-8 text-purple-600" />
+                <div>
+                  <CardTitle>BlookForce Agent</CardTitle>
+                  <CardDescription>Earn commissions by referring new users</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 mb-6">
+                <li>• Up to 5% commission rates</li>
+                <li>• Monthly payouts</li>
+                <li>• Territory management</li>
+                <li>• Career growth opportunities</li>
+              </ul>
+              <Link href="/register/blookforce">
+                <Button className="w-full">Register as Agent</Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Telecaller Registration */}
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <Phone className="h-8 w-8 text-indigo-600" />
+                <div>
+                  <CardTitle>Telecaller</CardTitle>
+                  <CardDescription>Join our telecalling team</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-gray-600 mb-6">
+                <li>• Competitive salary + incentives</li>
+                <li>• Flexible working hours</li>
+                <li>• Performance bonuses</li>
+                <li>• Career growth opportunities</li>
+              </ul>
+              <Link href="/register/telecaller">
+                <Button className="w-full">Register as Telecaller</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="text-center mt-12">
+          <p className="text-gray-600">
+            Already have an account?{" "}
+            <Link href="/login" className="text-blue-600 hover:underline font-medium">
+              Sign in here
             </Link>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <ShoppingBag className="h-10 w-10 mb-2 text-primary" />
-            <CardTitle>Brand / Advertiser</CardTitle>
-            <CardDescription>Find spaces to advertise your products and services</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-6">
-              Perfect for brands looking for targeted, hyperlocal advertising opportunities in physical spaces.
-            </p>
-            <ul className="list-disc pl-5 space-y-2 mb-6">
-              <li>Discover verified spaces for advertising</li>
-              <li>Target specific demographics and locations</li>
-              <li>Book campaigns and track performance</li>
-              <li>Access detailed analytics and insights</li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Link href="/register/brand" className="w-full">
-              <Button className="w-full">Register as Brand</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <Briefcase className="h-10 w-10 mb-2 text-primary" />
-            <CardTitle>Vendor</CardTitle>
-            <CardDescription>Offer your services for campaign execution and implementation</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-6">
-              Perfect for printing, fabrication, installation, and other service providers supporting advertising
-              campaigns.
-            </p>
-            <ul className="list-disc pl-5 space-y-2 mb-6">
-              <li>Get jobs and grow your business</li>
-              <li>Receive RFQs from brands and spaces</li>
-              <li>Secure faster payouts through escrow</li>
-              <li>Build your reputation with ratings</li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Link href="/register/vendor" className="w-full">
-              <Button className="w-full">Register as Vendor</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <Users className="h-10 w-10 mb-2 text-primary" />
-            <CardTitle>BlookForce Agent</CardTitle>
-            <CardDescription>Recruit space owners or clients and earn commissions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-6">
-              Perfect for individuals or agencies looking to earn by bringing new participants to the platform.
-            </p>
-            <ul className="list-disc pl-5 space-y-2 mb-6">
-              <li>Earn commissions on successful registrations</li>
-              <li>Get recurring revenue from ongoing campaigns</li>
-              <li>Track your performance and earnings</li>
-              <li>Access field agent tools and CRM</li>
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <Link href="/register/blookforce" className="w-full">
-              <Button className="w-full">Register as BlookForce Agent</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-      </div>
-
-      <div className="mt-10 text-center">
-        <p className="text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline">
-            Login here
-          </Link>
-        </p>
+          </p>
+        </div>
       </div>
     </div>
   )

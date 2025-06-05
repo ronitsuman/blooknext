@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -13,7 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Upload } from "lucide-react"
+import { ArrowLeft, Upload, Camera } from "lucide-react"
+import { toast } from "sonner"
 
 const spaceOwnerFormSchema = z.object({
   fullName: z.string().min(2, {
@@ -32,6 +35,7 @@ const spaceOwnerFormSchema = z.object({
   phone: z.string().min(10, {
     message: "Phone number must be at least 10 digits.",
   }),
+  alternatePhone: z.string().optional(),
   address: z.string().min(5, {
     message: "Address must be at least 5 characters.",
   }),
@@ -44,6 +48,9 @@ const spaceOwnerFormSchema = z.object({
   }),
   spaceName: z.string().min(2, {
     message: "Space name must be at least 2 characters.",
+  }),
+  spaceAddress: z.string().min(5, {
+    message: "Space address must be at least 5 characters.",
   }),
   city: z.string().min(2, {
     message: "City must be at least 2 characters.",
@@ -70,6 +77,22 @@ const spaceOwnerFormSchema = z.object({
   cameraCount: z.string().optional(),
   cameraType: z.string().optional(),
   cameraAccessible: z.boolean().default(false),
+  gstNumber: z.string().optional(),
+  panNumber: z.string().min(10, {
+    message: "PAN number must be 10 characters.",
+  }),
+  bankName: z.string().min(2, {
+    message: "Bank name must be at least 2 characters.",
+  }),
+  accountNumber: z.string().min(5, {
+    message: "Account number must be at least 5 characters.",
+  }),
+  ifscCode: z.string().min(11, {
+    message: "IFSC code must be 11 characters.",
+  }),
+  accountHolderName: z.string().min(2, {
+    message: "Account holder name must be at least 2 characters.",
+  }),
   termsAgreed: z.boolean().refine((val) => val === true, {
     message: "You must agree to the terms and conditions.",
   }),
@@ -78,8 +101,12 @@ const spaceOwnerFormSchema = z.object({
 export default function SpaceOwnerRegistrationClient() {
   const router = useRouter()
   const [step, setStep] = useState(1)
-  const totalSteps = 4
+  const totalSteps = 5
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [outsidePhoto, setOutsidePhoto] = useState<File | null>(null)
+  const [insidePhoto, setInsidePhoto] = useState<File | null>(null)
+  const [panCardPhoto, setPanCardPhoto] = useState<File | null>(null)
+  const [gstCertificate, setGstCertificate] = useState<File | null>(null)
 
   const form = useForm<z.infer<typeof spaceOwnerFormSchema>>({
     resolver: zodResolver(spaceOwnerFormSchema),
@@ -90,11 +117,13 @@ export default function SpaceOwnerRegistrationClient() {
       companyName: "",
       contactPerson: "",
       phone: "",
+      alternatePhone: "",
       address: "",
       pincode: "",
       landmark: "",
       spaceType: "",
       spaceName: "",
+      spaceAddress: "",
       city: "",
       state: "",
       spaceSize: "",
@@ -106,27 +135,130 @@ export default function SpaceOwnerRegistrationClient() {
       cameraCount: "",
       cameraType: "",
       cameraAccessible: false,
+      gstNumber: "",
+      panNumber: "",
+      bankName: "",
+      accountNumber: "",
+      ifscCode: "",
+      accountHolderName: "",
       termsAgreed: false,
     },
   })
 
-  async function onSubmit(values: z.infer<typeof spaceOwnerFormSchema>) {
-    setIsSubmitting(true)
-    console.log(values)
+  const handleOutsidePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setOutsidePhoto(file)
+    }
+  }
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false)
+  const handleInsidePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setInsidePhoto(file)
+    }
+  }
+
+  const handlePanCardUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setPanCardPhoto(file)
+    }
+  }
+
+  const handleGstCertificateUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setGstCertificate(file)
+    }
+  }
+
+  async function onSubmit(values: z.infer<typeof spaceOwnerFormSchema>) {
+    // Validate required photos
+    if (!outsidePhoto) {
+      toast.error("Please upload an outside photo of your space")
+      return
+    }
+
+    if (!insidePhoto) {
+      toast.error("Please upload an inside photo of your space")
+      return
+    }
+
+    if (!panCardPhoto) {
+      toast.error("Please upload your PAN card")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      // Create FormData for file uploads
+      const formData = new FormData()
+
+      // Add all form values
+      Object.entries(values).forEach(([key, value]) => {
+        formData.append(key, value.toString())
+      })
+
+      // Add files
+      formData.append("outsidePhoto", outsidePhoto)
+      formData.append("insidePhoto", insidePhoto)
+      formData.append("panCardPhoto", panCardPhoto)
+
+      if (gstCertificate) {
+        formData.append("gstCertificate", gstCertificate)
+      }
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      toast.success("Registration successful! Your application is under review.")
       router.push("/dashboard/space-owner")
-    }, 2000)
+    } catch (error) {
+      toast.error("Registration failed. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function nextStep() {
+    const currentFields = getCurrentStepFields()
+
+    // Validate current step fields before proceeding
+    const isValid = currentFields.every((field) => {
+      const value = form.getValues(field as any)
+      return value !== undefined && value !== ""
+    })
+
+    if (!isValid) {
+      // Trigger validation for the current fields
+      form.trigger(currentFields as any)
+      return
+    }
+
     setStep((prev) => Math.min(prev + 1, totalSteps))
   }
 
   function prevStep() {
     setStep((prev) => Math.max(prev - 1, 1))
+  }
+
+  function getCurrentStepFields() {
+    switch (step) {
+      case 1:
+        return ["fullName", "email", "password", "contactPerson", "phone", "address", "pincode"]
+      case 2:
+        return ["spaceName", "spaceAddress", "city", "state", "spaceType", "spaceSize"]
+      case 3:
+        return ["footfallWeekday", "footfallWeekend", "ageGroup", "incomeSegment"]
+      case 4:
+        return ["panNumber", "bankName", "accountNumber", "ifscCode", "accountHolderName"]
+      case 5:
+        return ["termsAgreed"]
+      default:
+        return []
+    }
   }
 
   const getStepTitle = () => {
@@ -136,9 +268,11 @@ export default function SpaceOwnerRegistrationClient() {
       case 2:
         return "Space Details"
       case 3:
-        return "Cameras & Heat Mapping"
+        return "Audience & Cameras"
       case 4:
-        return "Terms & Agreement"
+        return "Financial Details"
+      case 5:
+        return "Documents & Agreement"
       default:
         return "Registration"
     }
@@ -176,7 +310,7 @@ export default function SpaceOwnerRegistrationClient() {
                     name="fullName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name / Company Name</FormLabel>
+                        <FormLabel>Full Name / Company Name *</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter your full name or company name" {...field} />
                         </FormControl>
@@ -190,7 +324,7 @@ export default function SpaceOwnerRegistrationClient() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email Address</FormLabel>
+                        <FormLabel>Email Address *</FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="Enter your email address" autoComplete="email" {...field} />
                         </FormControl>
@@ -207,7 +341,7 @@ export default function SpaceOwnerRegistrationClient() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel>Password *</FormLabel>
                         <FormControl>
                           <Input
                             type="password"
@@ -227,7 +361,7 @@ export default function SpaceOwnerRegistrationClient() {
                     name="contactPerson"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Contact Person Name</FormLabel>
+                        <FormLabel>Contact Person Name *</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter contact person name" {...field} />
                         </FormControl>
@@ -236,26 +370,42 @@ export default function SpaceOwnerRegistrationClient() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter your phone number" autoComplete="tel" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter your phone number" autoComplete="tel" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="alternatePhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Alternate Phone (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter alternate phone number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Address</FormLabel>
+                        <FormLabel>Address *</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Enter your complete address" className="resize-none" {...field} />
                         </FormControl>
@@ -270,7 +420,7 @@ export default function SpaceOwnerRegistrationClient() {
                       name="pincode"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Pincode</FormLabel>
+                          <FormLabel>Pincode *</FormLabel>
                           <FormControl>
                             <Input placeholder="Enter pincode" {...field} />
                           </FormControl>
@@ -305,9 +455,81 @@ export default function SpaceOwnerRegistrationClient() {
                     name="spaceName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Space Name</FormLabel>
+                        <FormLabel>Space Name *</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter space name (e.g., Sunrise Café)" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="spaceAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Space Address *</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Enter complete space address" className="resize-none" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter city" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter state" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="pincode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pincode *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter pincode" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="landmark"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nearby Landmark (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter nearby landmark" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -319,7 +541,7 @@ export default function SpaceOwnerRegistrationClient() {
                     name="spaceType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Type of Space</FormLabel>
+                        <FormLabel>Type of Space *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -335,10 +557,7 @@ export default function SpaceOwnerRegistrationClient() {
                             <SelectItem value="restaurant">Restaurant</SelectItem>
                             <SelectItem value="cafe">Café</SelectItem>
                             <SelectItem value="clinic">Clinic</SelectItem>
-                            <SelectItem value="hospital">Hospital</SelectItem>
-                            <SelectItem value="coworking">Co-working</SelectItem>
-                            <SelectItem value="corporate">Corporate Park</SelectItem>
-                            <SelectItem value="banquet">Banquet</SelectItem>
+                            <SelectItem value="office">Office Building</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
@@ -347,49 +566,25 @@ export default function SpaceOwnerRegistrationClient() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter city" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter state" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
                   <FormField
                     control={form.control}
                     name="spaceSize"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Total Space Size (sq ft)</FormLabel>
+                        <FormLabel>Space Size (sq ft) *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter space size" {...field} />
+                          <Input placeholder="Enter space size in square feet" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Audience & Camera Details</h3>
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -397,9 +592,9 @@ export default function SpaceOwnerRegistrationClient() {
                       name="footfallWeekday"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Approx Footfall (Weekday)</FormLabel>
+                          <FormLabel>Weekday Footfall *</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter weekday footfall" {...field} />
+                            <Input placeholder="e.g., 100-200 people/day" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -411,9 +606,9 @@ export default function SpaceOwnerRegistrationClient() {
                       name="footfallWeekend"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Approx Footfall (Weekend)</FormLabel>
+                          <FormLabel>Weekend Footfall *</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter weekend footfall" {...field} />
+                            <Input placeholder="e.g., 200-300 people/day" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -426,19 +621,19 @@ export default function SpaceOwnerRegistrationClient() {
                     name="ageGroup"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Age Group Mix</FormLabel>
+                        <FormLabel>Primary Age Group *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select age group" />
+                              <SelectValue placeholder="Select primary age group" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="18-24">Mostly 18-24</SelectItem>
-                            <SelectItem value="25-34">Mostly 25-34</SelectItem>
-                            <SelectItem value="35-44">Mostly 35-44</SelectItem>
-                            <SelectItem value="45-60">Mostly 45-60</SelectItem>
-                            <SelectItem value="60+">Mostly 60+</SelectItem>
+                            <SelectItem value="18-25">18-25 years</SelectItem>
+                            <SelectItem value="26-35">26-35 years</SelectItem>
+                            <SelectItem value="36-45">36-45 years</SelectItem>
+                            <SelectItem value="46-55">46-55 years</SelectItem>
+                            <SelectItem value="55+">55+ years</SelectItem>
                             <SelectItem value="mixed">Mixed age groups</SelectItem>
                           </SelectContent>
                         </Select>
@@ -452,7 +647,7 @@ export default function SpaceOwnerRegistrationClient() {
                     name="incomeSegment"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Income Segment</FormLabel>
+                        <FormLabel>Income Segment *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -460,34 +655,31 @@ export default function SpaceOwnerRegistrationClient() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="mass">Mass</SelectItem>
-                            <SelectItem value="mid">Mid</SelectItem>
-                            <SelectItem value="premium">Premium</SelectItem>
-                            <SelectItem value="luxury">Luxury</SelectItem>
+                            <SelectItem value="budget">Budget (Lower income)</SelectItem>
+                            <SelectItem value="middle">Middle class</SelectItem>
+                            <SelectItem value="premium">Premium (Higher income)</SelectItem>
+                            <SelectItem value="luxury">Luxury (High net worth)</SelectItem>
+                            <SelectItem value="mixed">Mixed segments</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Cameras & Heat Mapping</h3>
 
                   <FormField
                     control={form.control}
                     name="hasCameras"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                         <FormControl>
                           <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>Are CCTV cameras installed?</FormLabel>
-                          <FormDescription>Check this if your space has CCTV cameras installed.</FormDescription>
+                          <FormLabel>Do you have CCTV cameras installed?</FormLabel>
+                          <FormDescription>
+                            This helps us understand the monitoring capabilities of your space.
+                          </FormDescription>
                         </div>
                       </FormItem>
                     )}
@@ -500,7 +692,7 @@ export default function SpaceOwnerRegistrationClient() {
                         name="cameraCount"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>How many cameras?</FormLabel>
+                            <FormLabel>Number of Cameras</FormLabel>
                             <FormControl>
                               <Input placeholder="Enter number of cameras" {...field} />
                             </FormControl>
@@ -514,7 +706,7 @@ export default function SpaceOwnerRegistrationClient() {
                         name="cameraType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Camera Types</FormLabel>
+                            <FormLabel>Camera Type</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -522,10 +714,10 @@ export default function SpaceOwnerRegistrationClient() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="dome">Dome</SelectItem>
-                                <SelectItem value="bullet">Bullet</SelectItem>
-                                <SelectItem value="ptz">PTZ</SelectItem>
-                                <SelectItem value="unknown">Unknown</SelectItem>
+                                <SelectItem value="analog">Analog</SelectItem>
+                                <SelectItem value="ip">IP Cameras</SelectItem>
+                                <SelectItem value="wireless">Wireless</SelectItem>
+                                <SelectItem value="mixed">Mixed types</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -537,14 +729,14 @@ export default function SpaceOwnerRegistrationClient() {
                         control={form.control}
                         name="cameraAccessible"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                             <FormControl>
                               <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                             </FormControl>
                             <div className="space-y-1 leading-none">
-                              <FormLabel>Are camera feeds accessible for heat mapping?</FormLabel>
+                              <FormLabel>Can camera footage be shared with advertisers?</FormLabel>
                               <FormDescription>
-                                Check this if camera feeds can be accessed for heat mapping analysis.
+                                This helps provide analytics to brands for their campaigns.
                               </FormDescription>
                             </div>
                           </FormItem>
@@ -552,45 +744,261 @@ export default function SpaceOwnerRegistrationClient() {
                       />
                     </>
                   )}
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Upload Photos
-                    </label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col items-center justify-center border border-dashed rounded-md p-4 h-32">
-                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">Outside Front (Facade)</p>
-                      </div>
-                      <div className="flex flex-col items-center justify-center border border-dashed rounded-md p-4 h-32">
-                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">Inside Main Area</p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
 
               {step === 4 && (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Terms & Agreement</h3>
+                  <h3 className="text-lg font-medium">Financial Details</h3>
+
+                  <FormField
+                    control={form.control}
+                    name="gstNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GST Number (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter GST number if registered" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          GST registration is not mandatory but helps with business transactions.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="panNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PAN Number *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter PAN number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <h4 className="text-md font-medium mt-6">Bank Account Details</h4>
+
+                  <FormField
+                    control={form.control}
+                    name="accountHolderName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Holder Name *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter account holder name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bank Name *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter bank name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="accountNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Account Number *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter account number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="ifscCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>IFSC Code *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter IFSC code" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {step === 5 && (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-medium">Documents & Agreement</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Outside Photo of Space *</label>
+                      <div className="mt-2">
+                        <input
+                          type="file"
+                          id="outsidePhoto"
+                          accept="image/*"
+                          onChange={handleOutsidePhotoUpload}
+                          className="hidden"
+                          required
+                        />
+                        <label
+                          htmlFor="outsidePhoto"
+                          className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
+                        >
+                          {outsidePhoto ? (
+                            <div className="text-center">
+                              <Camera className="mx-auto h-8 w-8 text-green-500" />
+                              <p className="mt-2 text-sm text-gray-600">{outsidePhoto.name}</p>
+                              <p className="text-xs text-green-600">Photo uploaded</p>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                              <p className="mt-2 text-sm text-gray-600">Upload Outside Photo</p>
+                              <p className="text-xs text-gray-500">Clear photo of space exterior</p>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Inside Photo of Space *</label>
+                      <div className="mt-2">
+                        <input
+                          type="file"
+                          id="insidePhoto"
+                          accept="image/*"
+                          onChange={handleInsidePhotoUpload}
+                          className="hidden"
+                          required
+                        />
+                        <label
+                          htmlFor="insidePhoto"
+                          className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
+                        >
+                          {insidePhoto ? (
+                            <div className="text-center">
+                              <Camera className="mx-auto h-8 w-8 text-green-500" />
+                              <p className="mt-2 text-sm text-gray-600">{insidePhoto.name}</p>
+                              <p className="text-xs text-green-600">Photo uploaded</p>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                              <p className="mt-2 text-sm text-gray-600">Upload Inside Photo</p>
+                              <p className="text-xs text-gray-500">Clear photo of space interior</p>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">PAN Card *</label>
+                      <div className="mt-2">
+                        <input
+                          type="file"
+                          id="panCard"
+                          accept="image/*,.pdf"
+                          onChange={handlePanCardUpload}
+                          className="hidden"
+                          required
+                        />
+                        <label
+                          htmlFor="panCard"
+                          className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
+                        >
+                          {panCardPhoto ? (
+                            <div className="text-center">
+                              <Upload className="mx-auto h-8 w-8 text-green-500" />
+                              <p className="mt-2 text-sm text-gray-600">{panCardPhoto.name}</p>
+                              <p className="text-xs text-green-600">Document uploaded</p>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                              <p className="mt-2 text-sm text-gray-600">Upload PAN Card</p>
+                              <p className="text-xs text-gray-500">Image or PDF format</p>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">GST Certificate (Optional)</label>
+                      <div className="mt-2">
+                        <input
+                          type="file"
+                          id="gstCertificate"
+                          accept="image/*,.pdf"
+                          onChange={handleGstCertificateUpload}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="gstCertificate"
+                          className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors"
+                        >
+                          {gstCertificate ? (
+                            <div className="text-center">
+                              <Upload className="mx-auto h-8 w-8 text-green-500" />
+                              <p className="mt-2 text-sm text-gray-600">{gstCertificate.name}</p>
+                              <p className="text-xs text-green-600">Document uploaded</p>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                              <p className="mt-2 text-sm text-gray-600">Upload GST Certificate</p>
+                              <p className="text-xs text-gray-500">Optional - Image or PDF</p>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
 
                   <FormField
                     control={form.control}
                     name="termsAgreed"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                         <FormControl>
                           <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>I agree to the BlookMySpace Terms & Conditions</FormLabel>
-                          <FormDescription>
-                            By checking this, you confirm that you have read and agree to our{" "}
+                          <FormLabel>
+                            I agree to the{" "}
                             <Link href="/terms" className="text-primary hover:underline">
-                              Terms & Conditions
-                            </Link>
-                            .
+                              Terms of Service
+                            </Link>{" "}
+                            and{" "}
+                            <Link href="/privacy" className="text-primary hover:underline">
+                              Privacy Policy
+                            </Link>{" "}
+                            *
+                          </FormLabel>
+                          <FormDescription>
+                            By checking this box, you agree to our terms and conditions.
                           </FormDescription>
                         </div>
                         <FormMessage />
@@ -600,33 +1008,30 @@ export default function SpaceOwnerRegistrationClient() {
                 </div>
               )}
 
-              <div className="flex justify-between pt-4">
-                {step > 1 ? (
+              <div className="flex justify-between pt-6">
+                {step > 1 && (
                   <Button type="button" variant="outline" onClick={prevStep}>
                     Previous
                   </Button>
-                ) : (
-                  <div></div>
                 )}
-
                 {step < totalSteps ? (
-                  <Button type="button" onClick={nextStep}>
+                  <Button type="button" onClick={nextStep} className="ml-auto">
                     Next
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating Account..." : "Submit Registration"}
+                  <Button type="submit" disabled={isSubmitting} className="ml-auto">
+                    {isSubmitting ? "Submitting..." : "Submit Registration"}
                   </Button>
                 )}
               </div>
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex justify-between">
+        <CardFooter>
           <p className="text-sm text-muted-foreground">
-            Already registered?{" "}
+            Already have an account?{" "}
             <Link href="/login" className="text-primary hover:underline">
-              Login here
+              Sign in here
             </Link>
           </p>
         </CardFooter>

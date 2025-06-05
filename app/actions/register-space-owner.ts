@@ -1,159 +1,141 @@
 "use server"
 
-import { z } from "zod"
-import { signUp } from "@/lib/auth"
-import { createSpaceOwner, createSpace } from "@/lib/database"
-
-const spaceOwnerFormSchema = z.object({
-  fullName: z.string().min(2, {
-    message: "Full name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  password: z.string().min(8, {
-    message: "Password must be at least 8 characters.",
-  }),
-  companyName: z.string().optional(),
-  contactPerson: z.string().min(2, {
-    message: "Contact person name must be at least 2 characters.",
-  }),
-  phone: z.string().min(10, {
-    message: "Phone number must be at least 10 digits.",
-  }),
-  address: z.string().min(5, {
-    message: "Address must be at least 5 characters.",
-  }),
-  pincode: z.string().min(6, {
-    message: "Pincode must be at least 6 characters.",
-  }),
-  landmark: z.string().optional(),
-  spaceType: z.string({
-    required_error: "Please select a space type.",
-  }),
-  spaceName: z.string().min(2, {
-    message: "Space name must be at least 2 characters.",
-  }),
-  city: z.string().min(2, {
-    message: "City must be at least 2 characters.",
-  }),
-  state: z.string().min(2, {
-    message: "State must be at least 2 characters.",
-  }),
-  spaceSize: z.string().min(1, {
-    message: "Please enter the space size.",
-  }),
-  footfallWeekday: z.string().min(1, {
-    message: "Please enter the weekday footfall.",
-  }),
-  footfallWeekend: z.string().min(1, {
-    message: "Please enter the weekend footfall.",
-  }),
-  ageGroup: z.string({
-    required_error: "Please select the age group.",
-  }),
-  incomeSegment: z.string({
-    required_error: "Please select the income segment.",
-  }),
-  hasCameras: z.boolean().default(false),
-  cameraCount: z.string().optional(),
-  cameraType: z.string().optional(),
-  cameraAccessible: z.boolean().default(false),
-  termsAgreed: z.boolean().refine((val) => val === true, {
-    message: "You must agree to the terms and conditions.",
-  }),
-})
+import { createServerClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { sendEmail } from "@/lib/email-service"
 
 export async function registerSpaceOwner(formData: FormData) {
-  try {
-    // Parse form data
-    const rawData = Object.fromEntries(formData.entries())
+  const cookieStore = cookies()
+  const supabase = createServerClient(cookieStore)
 
-    // Convert string "true"/"false" to boolean
-    const parsedData = {
-      ...rawData,
-      hasCameras: rawData.hasCameras === "true",
-      cameraAccessible: rawData.cameraAccessible === "true",
-      termsAgreed: rawData.termsAgreed === "true",
+  try {
+    // Extract form data
+    const userData = {
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+      fullName: formData.get("fullName") as string,
+      phone: formData.get("phone") as string,
     }
 
-    // Validate data
-    const validatedData = spaceOwnerFormSchema.parse(parsedData)
+    const spaceOwnerData = {
+      companyName: formData.get("companyName") as string,
+      contactPerson: formData.get("contactPerson") as string,
+      address: formData.get("address") as string,
+      pincode: formData.get("pincode") as string,
+      landmark: formData.get("landmark") as string,
+    }
+
+    const spaceData = {
+      spaceName: formData.get("spaceName") as string,
+      spaceAddress: formData.get("spaceAddress") as string,
+      spaceType: formData.get("spaceType") as string,
+      city: formData.get("city") as string,
+      state: formData.get("state") as string,
+      spaceSize: Number.parseInt(formData.get("spaceSize") as string),
+      footfallWeekday: Number.parseInt(formData.get("footfallWeekday") as string),
+      footfallWeekend: Number.parseInt(formData.get("footfallWeekend") as string),
+      ageGroup: formData.get("ageGroup") as string,
+      incomeSegment: formData.get("incomeSegment") as string,
+      hasCameras: formData.get("hasCameras") === "true",
+      cameraCount: formData.get("cameraCount") ? Number.parseInt(formData.get("cameraCount") as string) : null,
+      cameraType: formData.get("cameraType") as string,
+      cameraAccessible: formData.get("cameraAccessible") === "true",
+    }
 
     // Create user account
-    const { data: authData, error: authError } = await signUp({
-      email: validatedData.email,
-      password: validatedData.password,
-      fullName: validatedData.fullName,
-      phone: validatedData.phone,
-      role: "space_owner",
-    })
-
-    if (authError || !authData.user) {
-      throw new Error(authError?.message || "Failed to create user account")
-    }
-
-    // Create space owner profile
-    const { data: spaceOwnerData, error: spaceOwnerError } = await createSpaceOwner({
-      userId: authData.user.id,
-      companyName: validatedData.companyName,
-      contactPerson: validatedData.contactPerson,
-      address: validatedData.address,
-      pincode: validatedData.pincode,
-      landmark: validatedData.landmark,
-    })
-
-    if (spaceOwnerError || !spaceOwnerData) {
-      throw new Error("Failed to create space owner profile")
-    }
-
-    // Create space
-    const { data: spaceData, error: spaceError } = await createSpace({
-      ownerId: spaceOwnerData.id,
-      name: validatedData.spaceName,
-      spaceType: validatedData.spaceType,
-      address: validatedData.address,
-      city: validatedData.city,
-      state: validatedData.state,
-      pincode: validatedData.pincode,
-      spaceSize: Number.parseInt(validatedData.spaceSize),
-      footfallWeekday: Number.parseInt(validatedData.footfallWeekday),
-      footfallWeekend: Number.parseInt(validatedData.footfallWeekend),
-      ageGroup: validatedData.ageGroup,
-      incomeSegment: validatedData.incomeSegment,
-      hasCameras: validatedData.hasCameras,
-      cameraCount: validatedData.cameraCount ? Number.parseInt(validatedData.cameraCount) : undefined,
-      cameraType: validatedData.cameraType,
-      cameraAccessible: validatedData.cameraAccessible,
-    })
-
-    if (spaceError) {
-      throw new Error("Failed to create space")
-    }
-
-    return {
-      success: true,
-      message: "Registration successful! Please check your email to verify your account.",
-      data: {
-        user: authData.user,
-        spaceOwner: spaceOwnerData,
-        space: spaceData,
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: {
+          full_name: userData.fullName,
+          role: "space_owner",
+        },
       },
+    })
+
+    if (authError) throw authError
+
+    if (authData.user) {
+      // Create space owner profile with PENDING status
+      const { data: spaceOwner, error: spaceOwnerError } = await supabase
+        .from("space_owners")
+        .insert({
+          user_id: authData.user.id,
+          full_name: userData.fullName,
+          email: userData.email,
+          phone: userData.phone,
+          company_name: spaceOwnerData.companyName,
+          contact_person: spaceOwnerData.contactPerson,
+          address: spaceOwnerData.address,
+          pincode: spaceOwnerData.pincode,
+          landmark: spaceOwnerData.landmark,
+          status: "pending", // Requires admin approval
+        })
+        .select()
+        .single()
+
+      if (spaceOwnerError) throw spaceOwnerError
+
+      // Create space with PENDING status
+      const { data: space, error: spaceError } = await supabase
+        .from("spaces")
+        .insert({
+          owner_id: spaceOwner.id,
+          name: spaceData.spaceName,
+          address: spaceData.spaceAddress,
+          space_type: spaceData.spaceType,
+          city: spaceData.city,
+          state: spaceData.state,
+          pincode: spaceOwnerData.pincode,
+          space_size: spaceData.spaceSize,
+          footfall_weekday: spaceData.footfallWeekday,
+          footfall_weekend: spaceData.footfallWeekend,
+          age_group: spaceData.ageGroup,
+          income_segment: spaceData.incomeSegment,
+          has_cameras: spaceData.hasCameras,
+          camera_count: spaceData.cameraCount,
+          camera_type: spaceData.cameraType,
+          camera_accessible: spaceData.cameraAccessible,
+          status: "pending", // Requires admin approval
+        })
+        .select()
+        .single()
+
+      if (spaceError) throw spaceError
+
+      // Send notification emails
+      await sendEmail({
+        to: userData.email,
+        subject: "Registration Submitted - Pending Approval",
+        template: "space-owner-registration-pending",
+        data: {
+          name: userData.fullName,
+          spaceName: spaceData.spaceName,
+        },
+      })
+
+      // Notify admin
+      await sendEmail({
+        to: "admin@blookmyspace.com",
+        subject: "New Space Owner Registration - Approval Required",
+        template: "admin-approval-required",
+        data: {
+          ownerName: userData.fullName,
+          spaceName: spaceData.spaceName,
+          city: spaceData.city,
+          spaceType: spaceData.spaceType,
+          approvalUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/admin/approvals/${spaceOwner.id}`,
+        },
+      })
+
+      return { success: true, message: "Registration submitted successfully! Please wait for admin approval." }
     }
   } catch (error) {
-    console.error("Space owner registration error:", error)
-
-    if (error instanceof z.ZodError) {
-      return {
-        success: false,
-        message: "Validation failed",
-        errors: error.errors,
-      }
-    }
-
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Registration failed. Please try again.",
-    }
+    console.error("Registration error:", error)
+    return { success: false, message: "Registration failed. Please try again." }
   }
+
+  redirect("/login?message=Registration submitted. Please wait for approval.")
 }

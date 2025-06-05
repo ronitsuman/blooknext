@@ -85,13 +85,17 @@ export interface BlookForceAgent {
   salesExperience: boolean
   availability: "full-time" | "part-time" | "flexible"
   panNumber: string
+  aadhaarNumber?: string
+  aadhaarDocument?: string // File path/URL
+  selfiePhoto?: string // File path/URL
+  documentsVerified: boolean
   bankDetails: {
     bankName: string
     branch: string
     accountNumber: string
     ifscCode: string
   }
-  status: "active" | "inactive" | "pending"
+  status: "pending" | "documents_pending" | "verified" | "active" | "inactive" | "rejected"
   createdAt: Date
   updatedAt: Date
 }
